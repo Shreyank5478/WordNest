@@ -79,14 +79,14 @@ async function getQuote(favActivity, favPlace, temperature) {
   const quotePrompt = `Create a poetic phrase about ${favActivity} and ${favPlace} in the insightful, witty and satirical style of Oscar Wilde. Omit Oscar Wilde's name.`
 
   const body = {
-    model: "gpt-3.5-turbo",
-    messages: [{ role: "user", content: quotePrompt }],
+    model: "gpt-3.5-turbo-instruct",
+    prompt: quotePrompt,
     temperature: temperature,
     max_tokens: 256,
   }
 
   try {
-    const res = await fetch("https://apis.scrimba.com/openai/v1/chat/completions", {
+    const res = await fetch("https://apis.scrimba.com/openai/v1/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -98,7 +98,7 @@ async function getQuote(favActivity, favPlace, temperature) {
     }
 
     const response = await res.json()
-    return response?.choices?.[0]?.message?.content || "In the dance of words and wonder, beauty reveals itself."
+    return response?.choices?.[0]?.text?.trim() || "In the dance of words and wonder, beauty reveals itself."
   } catch (err) {
     console.error("Quote fetch failed:", err)
     return "In the dance of words and wonder, beauty reveals itself."
