@@ -26,11 +26,8 @@ export async function generateTextAndImage(
   temperature
 ) {
   startLoading()
-  // Run both fetches in parallel for faster load
-  const [url, quote] = await Promise.all([
-    getImage(favPlace),
-    getQuote(favActivity, favPlace, temperature)
-  ])
+  const quote = getQuote()           // sync — instant, no API call
+  const url = await getImage(favPlace) // async — still fetches from Unsplash
   stopLoading(name, url, quote)
 }
 
@@ -75,32 +72,37 @@ async function getImage(query) {
   }
 }
 
-async function getQuote(favActivity, favPlace, temperature) {
-  const quotePrompt = `Create a poetic phrase about ${favActivity} and ${favPlace} in the insightful, witty and satirical style of Oscar Wilde. Omit Oscar Wilde's name.`
+function getQuote() {
+  // Scrimba's OpenAI proxy is CORS-blocked from external domains like GitHub Pages.
+  // Using a curated local collection of Oscar Wilde quotes instead —
+  // randomly selected each call so the quote always changes on refresh.
+  const quotes = [
+    "To live is the rarest thing in the world. Most people exist, that is all.",
+    "Be yourself; everyone else is already taken.",
+    "We are all in the gutter, but some of us are looking at the stars.",
+    "The truth is rarely pure and never simple.",
+    "Always forgive your enemies; nothing annoys them so much.",
+    "I can resist everything except temptation.",
+    "A cynic is a man who knows the price of everything and the value of nothing.",
+    "Experience is simply the name we give our mistakes.",
+    "Every saint has a past, and every sinner has a future.",
+    "To love oneself is the beginning of a lifelong romance.",
+    "Memory is the diary we all carry about with us.",
+    "The only way to get rid of a temptation is to yield to it.",
+    "I am not young enough to know everything.",
+    "The books that the world calls immoral are books that show the world its own shame.",
+    "With age comes wisdom, but sometimes age comes alone.",
+    "To define is to limit.",
+    "Fashion is a form of ugliness so intolerable that we have to alter it every six months.",
+    "The imagination imitates. It is the critical spirit that creates.",
+    "A little sincerity is a dangerous thing, and a great deal of it is absolutely fatal.",
+    "One should always be in love. That is the reason one should never marry.",
+    "The only difference between a caprice and a lifelong passion is that the caprice lasts a little longer.",
+    "Life is far too important a thing ever to talk seriously about.",
+    "Conversation about the weather is the last refuge of the unimaginative.",
+    "The public is wonderfully tolerant. It forgives everything except genius.",
+    "Nothing is so dangerous as being too modern; one is apt to grow old-fashioned quite suddenly.",
+  ]
 
-  const body = {
-    model: "gpt-3.5-turbo-instruct",
-    prompt: quotePrompt,
-    temperature: temperature,
-    max_tokens: 256,
-  }
-
-  try {
-    const res = await fetch("https://apis.scrimba.com/openai/v1/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
-
-    if (!res.ok) {
-      console.error(`Quote API error: ${res.status}`)
-      return "In the dance of words and wonder, beauty reveals itself."
-    }
-
-    const response = await res.json()
-    return response?.choices?.[0]?.text?.trim() || "In the dance of words and wonder, beauty reveals itself."
-  } catch (err) {
-    console.error("Quote fetch failed:", err)
-    return "In the dance of words and wonder, beauty reveals itself."
-  }
+  return quotes[Math.floor(Math.random() * quotes.length)]
 }
