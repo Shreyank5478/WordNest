@@ -1,9 +1,3 @@
-// Bug #5 fix: removed dead imagePromptFromLocalStorage (was never used)
-// imageQueryFromLocalStorage and imageUrlFromLocalStorage will be used for image caching (Bug #6)
-const imageQueryFromLocalStorage = localStorage.getItem("imageQuery")
-const imageUrlFromLocalStorage = localStorage.getItem("imageUrl")
-const quotePromptFromLocalStorage = localStorage.getItem("quotePrompt")
-const quoteFromLocalStorage = localStorage.getItem("quote")
 const quoteSpan = document.querySelector(".quote-span")
 const quoteWrapper = document.querySelector(".quote-wrapper")
 const nameSpan = document.querySelector(".name-span")
@@ -32,7 +26,7 @@ export async function generateTextAndImage(
   temperature
 ) {
   startLoading()
-  // Bug #7 fix: run both fetches in parallel instead of sequentially
+  // Run both fetches in parallel for faster load
   const [url, quote] = await Promise.all([
     getImage(favPlace),
     getQuote(favActivity, favPlace, temperature)
@@ -60,49 +54,31 @@ function getDate() {
     "December",
   ]
 
-  const monthName = monthNames[monthIndex]
-
-  return `${monthName} ${year}`
+  return `${monthNames[monthIndex]} ${year}`
 }
 
 async function getImage(query) {
-  // Bug #6 fix: return cached image if same place was already loaded
-  if (query === imageQueryFromLocalStorage && imageUrlFromLocalStorage) {
-    return imageUrlFromLocalStorage
-  }
-
   try {
     const response = await fetch(
       `https://apis.scrimba.com/unsplash/photos/random/?count=1&query=${query}`
     )
-
     if (response.ok) {
       const data = await response.json()
-      const imageUrl = data[0].urls.full
-      // Bug #6 fix: persist image URL so the same photo shows on reload
-      localStorage.setItem("imageQuery", query)
-      localStorage.setItem("imageUrl", imageUrl)
-      return imageUrl
+      return data[0].urls.full
     } else {
       console.error(`Image fetch error: ${response.status}`)
-      return imageUrlFromLocalStorage || ""  // Bug #2 fix: never return undefined
+      return ""
     }
   } catch (err) {
     console.error("Image fetch failed:", err)
-    return imageUrlFromLocalStorage || ""  // Bug #2 fix: handle network failures gracefully
+    return ""
   }
 }
 
 async function getQuote(favActivity, favPlace, temperature) {
-  let quotePrompt = `Create a poetic phrase about ${favActivity} and ${favPlace} in the insightful, witty and satirical style of Oscar Wilde. Omit Oscar Wilde's name.`
+  const quotePrompt = `Create a poetic phrase about ${favActivity} and ${favPlace} in the insightful, witty and satirical style of Oscar Wilde. Omit Oscar Wilde's name.`
 
-  if (quotePrompt === quotePromptFromLocalStorage && quoteFromLocalStorage) {
-    return quoteFromLocalStorage
-  }
-
-  localStorage.setItem("quotePrompt", quotePrompt)
-  // Bug #4 fix: text-davinci-003 was shut down Jan 2024 — use gpt-3.5-turbo via chat completions
-  let body = {
+  const body = {
     model: "gpt-3.5-turbo",
     messages: [{ role: "user", content: quotePrompt }],
     temperature: temperature,
@@ -110,30 +86,21 @@ async function getQuote(favActivity, favPlace, temperature) {
   }
 
   try {
-    // Bug #4 fix: switch endpoint to chat completions
-    let res = await fetch("https://apis.scrimba.com/openai/v1/chat/completions", {
+    const res = await fetch("https://apis.scrimba.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
 
-    // Bug #3 fix: check HTTP status before attempting to parse
     if (!res.ok) {
       console.error(`Quote API error: ${res.status}`)
-      return quoteFromLocalStorage || "In the dance of words and wonder, beauty reveals itself."
+      return "In the dance of words and wonder, beauty reveals itself."
     }
 
-    let response = await res.json()
-    // Bug #3 fix: use optional chaining to safely access nested fields
-    // Bug #4 fix: chat completions use .message.content instead of .text
-    let newQuote = response?.choices?.[0]?.message?.content || "In the dance of words and wonder, beauty reveals itself."
-    localStorage.setItem("quote", newQuote)
-    return newQuote
+    const response = await res.json()
+    return response?.choices?.[0]?.message?.content || "In the dance of words and wonder, beauty reveals itself."
   } catch (err) {
-    // Bug #3 fix: catch network failures and return graceful fallback
     console.error("Quote fetch failed:", err)
-    return quoteFromLocalStorage || "In the dance of words and wonder, beauty reveals itself."
+    return "In the dance of words and wonder, beauty reveals itself."
   }
 }
